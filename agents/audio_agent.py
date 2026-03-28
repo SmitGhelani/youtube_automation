@@ -76,8 +76,8 @@ class AudioAgent:
             except Exception as e:
                 logger.warning(f"ElevenLabs failed ({e}), falling back to pyttsx3")
 
-        # Fallback: pyttsx3 (100% free, offline)
-        return self._pyttsx3_tts(segments_text, output_path)
+        # Fallback: espeak directly via subprocess (100% free, works on headless Linux)
+        return self._espeak_tts(segments_text, output_path)
 
     def _elevenlabs_tts(self, texts: list, output_path: Path) -> Path:
         """ElevenLabs TTS — 10,000 free characters/month on free tier."""
@@ -112,34 +112,44 @@ class AudioAgent:
         logger.info(f"ElevenLabs TTS: {len(full_text)} chars → {output_path}")
         return output_path
 
-    def _pyttsx3_tts(self, texts: list, output_path: Path) -> Path:
+    def _espeak_tts(self, texts: list, output_path: Path) -> Path:
         """
-        pyttsx3: 100% free, offline TTS using espeak on Linux / SAPI on Windows.
-        Saves directly to WAV — no codec conversion needed.
+        Call espeak directly via subprocess — bypasses the pyttsx3 ctypes/weakref
+        bug that causes empty files on headless GitHub Actions Linux runners.
+        espeak is installed in the workflow via: apt-get install espeak espeak-ng
         """
-        import pyttsx3
-        import platform
-
-        # On Linux (GitHub Actions), force espeak driver
-        if platform.system() == "Linux":
-            engine = pyttsx3.init(driverName="espeak")
-        else:
-            engine = pyttsx3.init()
-
-        engine.setProperty("rate", 160)    # Slightly slower = clearer
-        engine.setProperty("volume", 0.95)
-
         full_text = " ".join(texts)
 
-        # Save directly to WAV — pyttsx3/espeak natively produces WAV
+        # Write text to a temp file to avoid shell-escaping issues
+        txt_path = output_path.with_suffix(".txt")
+        txt_path.write_text(full_text, encoding="utf-8")
+
         wav_path = output_path.with_suffix(".wav")
-        engine.save_to_file(full_text, str(wav_path))
-        engine.runAndWait()
 
-        if not wav_path.exists() or wav_path.stat().st_size < 1000:
-            raise RuntimeError(f"pyttsx3 produced empty/missing file: {wav_path}")
+        # espeak flags:
+        #   -f  read from file
+        #   -w  write WAV output (no sound card needed)
+        #   -s  speed in words/minute (default 175, 150 is clearer)
+        #   -v  voice (en = English, en-us for American accent)
+        #   -a  amplitude 0-200 (100 = default)
+        cmd = [
+            "espeak",
+            "-f", str(txt_path),
+            "-w", str(wav_path),
+            "-s", "150",
+            "-v", "en",
+            "-a", "100",
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        txt_path.unlink(missing_ok=True)
 
-        logger.info(f"pyttsx3 TTS done → {wav_path} ({wav_path.stat().st_size // 1024}KB)")
+        if result.returncode != 0:
+            raise RuntimeError(f"espeak failed (rc={result.returncode}): {result.stderr}")
+
+        if not wav_path.exists() or wav_path.stat().st_size < 500:
+            raise RuntimeError(f"espeak produced empty file: {wav_path}")
+
+        logger.info(f"espeak TTS done → {wav_path} ({wav_path.stat().st_size // 1024}KB)")
         return wav_path
 
     def _get_background_music(self, mood: str, workspace: Path) -> Path:
