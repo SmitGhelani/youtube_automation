@@ -49,7 +49,7 @@ def main():
     print("Please log in with the YouTube channel account.\n")
 
     flow = InstalledAppFlow.from_client_secrets_file(str(creds_path), SCOPES)
-    creds = flow.run_local_server(port=9980)
+    creds = flow.run_local_server(port=8080)
 
     output = {
         "refresh_token": creds.refresh_token,

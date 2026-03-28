@@ -39,7 +39,7 @@ class AudioAgent:
         """
         Returns path to final mixed audio file (voice + bg music).
         """
-        # Step 1: Generate voice narration
+        # Step 1: Generate voice narration (returns .wav or .mp3 depending on engine)
         narration_path = self._generate_voice(script, workspace)
 
         # Step 2: Download background music
@@ -48,8 +48,8 @@ class AudioAgent:
             workspace
         )
 
-        # Step 3: Mix voice + background music
-        final_path = workspace / "audio_final.mp3"
+        # Step 3: Mix voice + background music → output as AAC/m4a (no libmp3lame needed)
+        final_path = workspace / "audio_final.aac"
         self._mix_audio(narration_path, music_path, final_path)
 
         logger.info(f"Audio ready: {final_path}")
@@ -114,50 +114,39 @@ class AudioAgent:
 
     def _pyttsx3_tts(self, texts: list, output_path: Path) -> Path:
         """
-        pyttsx3: 100% free, offline TTS using system voices.
-        Quality is basic but functional and zero cost.
+        pyttsx3: 100% free, offline TTS using espeak on Linux / SAPI on Windows.
+        Saves directly to WAV — no codec conversion needed.
         """
         import pyttsx3
-        import tempfile
+        import platform
 
-        engine = pyttsx3.init()
+        # On Linux (GitHub Actions), force espeak driver
+        if platform.system() == "Linux":
+            engine = pyttsx3.init(driverName="espeak")
+        else:
+            engine = pyttsx3.init()
 
-        # Improve voice quality settings
-        engine.setProperty("rate", 165)   # Words per minute (normal = 150-200)
+        engine.setProperty("rate", 160)    # Slightly slower = clearer
         engine.setProperty("volume", 0.95)
-
-        # Use a better voice if available
-        voices = engine.getProperty("voices")
-        for voice in voices:
-            if "female" in voice.name.lower() or "zira" in voice.name.lower():
-                engine.setProperty("voice", voice.id)
-                break
 
         full_text = " ".join(texts)
 
-        # pyttsx3 saves to WAV, then we convert to MP3 with FFmpeg
+        # Save directly to WAV — pyttsx3/espeak natively produces WAV
         wav_path = output_path.with_suffix(".wav")
         engine.save_to_file(full_text, str(wav_path))
         engine.runAndWait()
 
-        # Convert WAV → MP3
-        cmd = [
-            "ffmpeg", "-y",
-            "-i", str(wav_path),
-            "-codec:a", "libmp3lame",
-            "-b:a", "128k",
-            str(output_path),
-        ]
-        subprocess.run(cmd, check=True, capture_output=True)
-        wav_path.unlink(missing_ok=True)
+        if not wav_path.exists() or wav_path.stat().st_size < 1000:
+            raise RuntimeError(f"pyttsx3 produced empty/missing file: {wav_path}")
 
-        logger.info(f"pyttsx3 TTS done → {output_path}")
-        return output_path
+        logger.info(f"pyttsx3 TTS done → {wav_path} ({wav_path.stat().st_size // 1024}KB)")
+        return wav_path
 
     def _get_background_music(self, mood: str, workspace: Path) -> Path:
         """
         Download royalty-free background music.
         Uses bensound.com (free for YouTube with attribution in description).
+        Downloaded as MP3 (bensound serves MP3); FFmpeg can mix MP3 + WAV fine.
         """
         music_path = workspace / "background_music.mp3"
 
@@ -175,21 +164,22 @@ class AudioAgent:
             except Exception as e:
                 logger.warning(f"Music download failed ({url}): {e}")
 
-        # Last resort: generate 60s of silence
+        # Last resort: generate 60s of silence — use WAV (universally supported, no codec install)
+        silence_path = workspace / "background_music.wav"
         cmd = [
             "ffmpeg", "-y",
             "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
             "-t", "60",
-            str(music_path),
+            str(silence_path),
         ]
         subprocess.run(cmd, check=True, capture_output=True)
         logger.warning("Using silent background track (no music available)")
-        return music_path
+        return silence_path
 
     def _mix_audio(self, voice_path: Path, music_path: Path, output_path: Path):
         """
         Mix voice (full volume) with background music (15% volume).
-        Voice is -3dB louder to ensure clarity.
+        Uses AAC codec — built into FFmpeg, no extra install needed.
         """
         # Get voice duration
         result = subprocess.run(
@@ -197,23 +187,29 @@ class AudioAgent:
              "-of", "default=noprint_wrappers=1:nokey=1", str(voice_path)],
             capture_output=True, text=True
         )
-        duration = float(result.stdout.strip())
+        try:
+            duration = float(result.stdout.strip())
+        except ValueError:
+            duration = 60.0  # fallback if ffprobe fails
 
         cmd = [
             "ffmpeg", "-y",
             "-i", str(voice_path),
             "-i", str(music_path),
             "-filter_complex",
-            # Voice at full volume, music at 15%, loop music if shorter than voice
             f"[0:a]volume=1.0[voice];"
             f"[1:a]aloop=loop=-1:size=2e+09,atrim=duration={duration},volume=0.15[music];"
             f"[voice][music]amix=inputs=2:duration=first[out]",
             "-map", "[out]",
-            "-codec:a", "libmp3lame",
+            "-c:a", "aac",        # AAC: built into FFmpeg, no libmp3lame needed
             "-b:a", "192k",
+            "-ar", "44100",
             str(output_path),
         ]
-        subprocess.run(cmd, check=True, capture_output=True)
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            logger.error(f"Mix failed:\n{result.stderr[-500:]}")
+            raise RuntimeError("FFmpeg audio mix failed")
         logger.info(f"Audio mixed → {output_path} ({duration:.1f}s)")
 
     def get_segment_timestamps(self, script: dict, output_path: Path) -> list:
