@@ -1,0 +1,27 @@
+# Core AI
+anthropic>=0.25.0
+
+# Trend research
+pytrends>=4.9.2
+requests>=2.31.0
+
+# Video/Audio processing (FFmpeg must be installed separately)
+# Install FFmpeg: sudo apt-get install ffmpeg
+
+# TTS (free fallback)
+pyttsx3>=2.90
+
+# Image/Thumbnail
+Pillow>=10.0.0
+
+# YouTube upload
+google-api-python-client>=2.100.0
+google-auth>=2.23.0
+google-auth-oauthlib>=1.1.0
+google-auth-httplib2>=0.1.1
+
+# Email notifications (optional)
+sendgrid>=6.10.0
+
+# Utilities
+python-dotenv>=1.0.0

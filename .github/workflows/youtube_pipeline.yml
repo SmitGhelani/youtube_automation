@@ -1,0 +1,96 @@
+name: Autonomous YouTube Pipeline
+
+on:
+  # Daily Short: 9:00 AM IST = 3:30 AM UTC
+  schedule:
+    - cron: '30 3 * * *'      # Daily Short at 9:00 AM IST
+    - cron: '30 12 * * 6'     # Saturday Long video at 6:00 PM IST
+
+  # Allow manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      video_type:
+        description: 'Video type'
+        required: true
+        default: 'short'
+        type: choice
+        options:
+          - short
+          - long
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      # ── Checkout code ──────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Install system dependencies ────────────────────────────────────────
+      - name: Install FFmpeg and system deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg espeak espeak-ng libespeak-ng-dev fonts-open-sans
+          ffmpeg -version | head -1
+
+      # ── Python setup ───────────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      # ── Install Python dependencies ────────────────────────────────────────
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ── Determine video type ────────────────────────────────────────────────
+      - name: Determine video type
+        id: video_type
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "type=${{ github.event.inputs.video_type }}" >> $GITHUB_OUTPUT
+          elif [ "$(date +%u)" = "6" ] && [ "$(date +%H)" = "12" ]; then
+            echo "type=long" >> $GITHUB_OUTPUT
+          else
+            echo "type=short" >> $GITHUB_OUTPUT
+          fi
+
+      # ── Run pipeline ───────────────────────────────────────────────────────
+      - name: Run YouTube Pipeline
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          CHANNEL_NICHE: "AI & Technology — Latest discoveries, tools, and breakthroughs"
+        run: |
+          python main.py --type ${{ steps.video_type.outputs.type }}
+
+      # ── Upload logs as artifact ────────────────────────────────────────────
+      - name: Upload pipeline logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-logs-${{ github.run_id }}
+          path: |
+            pipeline.log
+            workspace/*/result.json
+            workspace/*/metadata.json
+          retention-days: 7
+
+      # ── Notify on failure ──────────────────────────────────────────────────
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "Pipeline FAILED at $(date)" >> pipeline.log
+          echo "Check GitHub Actions logs for details"
