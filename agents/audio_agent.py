@@ -81,12 +81,14 @@ class AudioAgent:
 
     def _elevenlabs_tts(self, texts: list, output_path: Path) -> Path:
         """ElevenLabs TTS — 10,000 free characters/month on free tier."""
-        full_text = " ... ".join(texts)  # Pause between segments
+        full_text = "\n\n".join(texts)  # Natural paragraph pause between segments
 
-        # Respect free tier: 10k chars/month. Shorts are ~300-500 chars.
-        if len(full_text) > 10000:
-            full_text = full_text[:10000]
-            logger.warning("Text truncated to 10k chars for ElevenLabs free tier")
+        # Free tier: 10k chars/month. Trim at last sentence boundary to avoid cut-off words.
+        if len(full_text) > 9800:
+            truncated = full_text[:9800]
+            last_stop = max(truncated.rfind("."), truncated.rfind("!"), truncated.rfind("?"))
+            full_text = truncated[:last_stop + 1] if last_stop > 0 else truncated
+            logger.warning(f"Text trimmed to {len(full_text)} chars for ElevenLabs free tier")
 
         url = f"https://api.elevenlabs.io/v1/text-to-speech/{self.cfg.elevenlabs_voice_id}"
         headers = {
@@ -97,10 +99,11 @@ class AudioAgent:
         payload = {
             "text": full_text,
             "model_id": self.cfg.elevenlabs_model,
+            "output_format": self.cfg.elevenlabs_output_format,  # Highest quality MP3 on free tier
             "voice_settings": {
-                "stability": 0.5,
+                "stability": 0.4,          # Lower = more expressive, less robotic
                 "similarity_boost": 0.75,
-                "style": 0.0,
+                "style": 0.3,              # Natural delivery variance (v2 model only)
                 "use_speaker_boost": True,
             },
         }
@@ -208,7 +211,7 @@ class AudioAgent:
             "-i", str(music_path),
             "-filter_complex",
             f"[0:a]volume=1.0[voice];"
-            f"[1:a]aloop=loop=-1:size=2e+09,atrim=duration={duration},volume=0.15[music];"
+            f"[1:a]aloop=loop=-1:size=2000000000,atrim=duration={duration},volume=0.15[music];"
             f"[voice][music]amix=inputs=2:duration=first[out]",
             "-map", "[out]",
             "-c:a", "aac",        # AAC: built into FFmpeg, no libmp3lame needed

@@ -59,7 +59,8 @@ class Config:
     # ── Voice Settings (ElevenLabs) ──────────────────────────────────────────
     # Free voices that don't consume your quota: use pyttsx3 as fallback
     elevenlabs_voice_id: str = "21m00Tcm4TlvDq8ikWAM"  # Rachel (free)
-    elevenlabs_model: str = "eleven_monolingual_v1"
+    elevenlabs_model: str = "eleven_multilingual_v2"
+    elevenlabs_output_format: str = "mp3_44100_192"     # Best quality on free tier
     tts_fallback: str = "pyttsx3"  # Free local TTS fallback
 
     # ── Timing ───────────────────────────────────────────────────────────────
@@ -68,7 +69,7 @@ class Config:
     long_max_duration_sec: int = 720      # 12 minutes target
 
     # ── Claude Model ─────────────────────────────────────────────────────────
-    claude_model: str = "claude-opus-4-5"
+    claude_model: str = "claude-sonnet-4-6"
 
     # ── Compliance ───────────────────────────────────────────────────────────
     banned_topics: list = field(default_factory=lambda: [
