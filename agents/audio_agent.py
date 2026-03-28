@@ -129,7 +129,7 @@ class AudioAgent:
         if self._kokoro is None:
             try:
                 from kokoro_onnx import Kokoro
-                self._kokoro = Kokoro("kokoro-v0_19.onnx", "voices.bin")
+                self._kokoro = Kokoro("kokoro-v1.0.onnx", "voices-v1.0.bin")
                 logger.info("Kokoro TTS model loaded")
             except Exception as e:
                 raise RuntimeError(
