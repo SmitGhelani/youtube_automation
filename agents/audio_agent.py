@@ -56,7 +56,7 @@ class AudioAgent:
     # ─────────────────────────────────────────────────────────────────────────
 
     def generate(self, script: dict, workspace: Path) -> Path:
-        """Returns path to final mixed audio file (voice + bg music)."""
+        """Returns path to final mixed audio file (lossless WAV — encoded once in assembler)."""
         narration_path = self._generate_voice(script, workspace)
 
         music_path = self._get_background_music(
@@ -64,8 +64,8 @@ class AudioAgent:
             workspace,
         )
 
-        final_path = workspace / "audio_final.aac"
-        self._mix_audio(narration_path, music_path, final_path)
+        # _mix_audio returns a WAV path (lossless) — assembler does the final AAC encode
+        final_path = self._mix_audio(narration_path, music_path, workspace / "audio_final")
 
         logger.info(f"Audio ready: {final_path}")
         return final_path
@@ -173,7 +173,17 @@ class AudioAgent:
             raise RuntimeError("Kokoro produced no audio samples")
 
         combined = np.concatenate(all_samples)
-        sf.write(str(output_path), combined, sample_rate)
+
+        # Upsample from Kokoro's native 24kHz → 44100Hz before writing.
+        # This prevents FFmpeg from doing a silent low-quality resample mid-chain.
+        target_sr = 44100
+        if sample_rate != target_sr:
+            import scipy.signal as sps
+            num_samples = int(len(combined) * target_sr / sample_rate)
+            combined = sps.resample(combined, num_samples).astype(np.float32)
+            sample_rate = target_sr
+
+        sf.write(str(output_path), combined, sample_rate, subtype="PCM_16")
 
         duration = len(combined) / sample_rate
         size_kb = output_path.stat().st_size // 1024
@@ -291,7 +301,11 @@ class AudioAgent:
     # ─────────────────────────────────────────────────────────────────────────
 
     def _mix_audio(self, voice_path: Path, music_path: Path, output_path: Path):
-        """Mix voice (100%) + background music (15%) -> AAC output."""
+        """
+        Mix voice (100%) + background music (15%) → lossless WAV.
+        NO lossy encoding here — encoding happens once in assembler_agent._merge_final().
+        Keeping PCM here avoids the double-AAC-encode that causes audio artefacts.
+        """
         result = subprocess.run(
             ["ffprobe", "-v", "error", "-show_entries", "format=duration",
              "-of", "default=noprint_wrappers=1:nokey=1", str(voice_path)],
@@ -302,25 +316,30 @@ class AudioAgent:
         except ValueError:
             duration = 60.0
 
+        # Output as WAV (lossless PCM) — assembler will do the single final AAC encode
+        wav_output = output_path.with_suffix(".wav")
+
         cmd = [
             "ffmpeg", "-y",
             "-i", str(voice_path),
             "-i", str(music_path),
             "-filter_complex",
-            f"[0:a]volume=1.0[voice];"
-            f"[1:a]aloop=loop=-1:size=2000000000,atrim=duration={duration},volume=0.15[music];"
+            f"[0:a]aresample=44100,volume=1.0[voice];"
+            f"[1:a]aresample=44100,aloop=loop=-1:size=2000000000,"
+            f"atrim=duration={duration},volume=0.15[music];"
             f"[voice][music]amix=inputs=2:duration=first[out]",
             "-map", "[out]",
-            "-c:a", "aac",
-            "-b:a", "192k",
+            "-c:a", "pcm_s16le",   # lossless — no quality loss here
             "-ar", "44100",
-            str(output_path),
+            str(wav_output),
         ]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             logger.error(f"Mix failed:\n{result.stderr[-500:]}")
             raise RuntimeError("FFmpeg audio mix failed")
-        logger.info(f"Audio mixed -> {output_path} ({duration:.1f}s)")
+
+        logger.info(f"Audio mixed (lossless WAV) -> {wav_output} ({duration:.1f}s)")
+        return wav_output
 
     # ─────────────────────────────────────────────────────────────────────────
     # Helpers
