@@ -84,9 +84,9 @@ class AssemblerAgent:
     def _concat_clips(self, clip_list: Path, output_path: Path, video_type: str):
         """Concatenate all clips into one video using FFmpeg concat demuxer."""
         if video_type == "short":
-            size = "1080x1920"
+            w, h = 1080, 1920
         else:
-            size = "1920x1080"
+            w, h = 1920, 1080
 
         cmd = [
             "ffmpeg", "-y",
@@ -94,8 +94,8 @@ class AssemblerAgent:
             "-safe", "0",
             "-i", str(clip_list),
             "-vf", (
-                f"scale={size}:force_original_aspect_ratio=increase,"
-                f"crop={size},"
+                f"scale={w}:{h}:force_original_aspect_ratio=increase,"
+                f"crop={w}:{h},"
                 f"fps={self.cfg.video_fps}"
             ),
             "-c:v", "libx264",
@@ -178,11 +178,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         video_type: str,
     ):
         """Merge video + audio + burned-in subtitles into final MP4."""
-        if video_type == "short":
-            size = "1080x1920"
-        else:
-            size = "1920x1080"
-
         # Burn subtitles into video
         subtitle_filter = f"ass={subtitle_path}"
 
