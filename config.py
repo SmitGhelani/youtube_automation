@@ -56,12 +56,17 @@ class Config:
     video_crf: int = 18                   # H.264 quality (lower = better, 18 is visually lossless)
     video_preset: str = "slow"            # FFmpeg encode preset
 
-    # ── Voice Settings (ElevenLabs) ──────────────────────────────────────────
-    # Free voices that don't consume your quota: use pyttsx3 as fallback
+    # ── Voice Settings — Kokoro (primary, local, free) ───────────────────────
+    # Voices: af_sarah (warm female), af_nicole, am_adam, am_michael,
+    #         bf_emma (British female), bm_george (British male)
+    kokoro_voice: str = "af_sarah"   # American female — warm, clear, great for YouTube
+    kokoro_speed: float = 1.0        # 1.0 = natural; 0.9 = slightly slower/clearer
+    kokoro_lang: str = "en-us"
+
+    # ── Voice Settings — ElevenLabs (optional fallback, uses monthly quota) ──
     elevenlabs_voice_id: str = "21m00Tcm4TlvDq8ikWAM"  # Rachel (free)
     elevenlabs_model: str = "eleven_multilingual_v2"
     elevenlabs_output_format: str = "mp3_44100_192"     # Best quality on free tier
-    tts_fallback: str = "pyttsx3"  # Free local TTS fallback
 
     # ── Timing ───────────────────────────────────────────────────────────────
     short_max_duration_sec: int = 59      # Keep under 60s for Shorts
