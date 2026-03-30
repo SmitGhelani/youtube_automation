@@ -178,40 +178,36 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         video_type: str,
     ):
         """
-        Merge video + lossless WAV audio + subtitles → final MP4.
+        Merge video + lossless WAV audio + subtitles -> final MP4.
 
-        This is the ONE AND ONLY place where AAC encoding happens.
-        Audio path must be the lossless WAV produced by audio_agent.
+        This is the ONE AND ONLY AAC encode in the entire pipeline.
+        audio_path must be the lossless PCM WAV from audio_agent.generate().
 
         AAC settings:
-          - 320k CBR (YouTube recommends ≥192k; 320k gives clear headroom)
-          - 44100 Hz stereo (YouTube standard)
-          - soxr resampler (highest quality, handles the WAV input cleanly)
-          - aac_he disabled (plain AAC-LC — better at high bitrates, no
-            artefacts from HE's spectral band replication)
+          320k CBR  -- YouTube recommended headroom (they re-encode to 128/192k AAC-LC)
+          44100 Hz stereo
+          soxr resampler -- highest quality, handles WAV input cleanly
+          -shortest removed -- it silently truncates audio when WAV != video length
         """
-        subtitle_filter = f"ass={subtitle_path}"
-
         cmd = [
             "ffmpeg", "-y",
             "-i", str(video_path),
             "-i", str(audio_path),
-            "-vf", subtitle_filter,
-            # ── Video ──────────────────────────────────────────────────────
+            "-vf", f"ass={subtitle_path}",
+            # Video
             "-c:v", "libx264",
             "-preset", self.cfg.video_preset,
             "-crf", str(self.cfg.video_crf),
             "-pix_fmt", "yuv420p",
-            # ── Audio — single encode, high quality ────────────────────────
+            # Audio -- single encode, high quality
             "-c:a", "aac",
-            "-b:a", "320k",          # YouTube recommended; up from 192k
+            "-b:a", "320k",
             "-ar", "44100",
-            "-ac", "2",              # stereo
-            "-af", "aresample=resampler=soxr:osr=44100",  # soxr quality resample
-            # ── Container ──────────────────────────────────────────────────
+            "-ac", "2",
+            "-af", "aresample=resampler=soxr:osr=44100",
+            # Container
             "-movflags", "+faststart",
-            # NOTE: -shortest removed — it can silently truncate audio when
-            # WAV duration doesn't perfectly match video length.
+            # NOTE: -shortest intentionally omitted -- it truncates audio
             str(output_path),
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
