@@ -5,25 +5,26 @@ anthropic>=0.25.0
 pytrends>=4.9.2
 requests>=2.31.0
 
-# Video/Audio processing (FFmpeg must be installed separately)
-# Install FFmpeg: sudo apt-get install ffmpeg
+# Video/Audio processing (FFmpeg installed separately via apt)
+# sudo apt-get install ffmpeg libsox-fmt-all
 
-# TTS — Kokoro (primary: local, free, near-human quality)
+# ── TTS: Kokoro (primary — local, free, near-human quality) ──────────────────
 kokoro-onnx>=0.4.0
 soundfile>=0.12.1
 numpy>=1.24.0
+scipy>=1.11.0        # polyphase resampler: Kokoro 24kHz → 44100Hz, no artefacts
 
-# Image/Thumbnail
+# ── Image / Thumbnail ─────────────────────────────────────────────────────────
 Pillow>=10.0.0
 
-# YouTube upload
+# ── YouTube upload ────────────────────────────────────────────────────────────
 google-api-python-client>=2.100.0
 google-auth>=2.23.0
 google-auth-oauthlib>=1.1.0
 google-auth-httplib2>=0.1.1
 
-# Email notifications (optional)
+# ── Email notifications (optional) ───────────────────────────────────────────
 sendgrid>=6.10.0
 
-# Utilities
+# ── Utilities ─────────────────────────────────────────────────────────────────
 python-dotenv>=1.0.0

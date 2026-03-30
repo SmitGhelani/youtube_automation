@@ -177,8 +177,19 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         output_path: Path,
         video_type: str,
     ):
-        """Merge video + audio + burned-in subtitles into final MP4."""
-        # Burn subtitles into video
+        """
+        Merge video + lossless WAV audio + subtitles → final MP4.
+
+        This is the ONE AND ONLY place where AAC encoding happens.
+        Audio path must be the lossless WAV produced by audio_agent.
+
+        AAC settings:
+          - 320k CBR (YouTube recommends ≥192k; 320k gives clear headroom)
+          - 44100 Hz stereo (YouTube standard)
+          - soxr resampler (highest quality, handles the WAV input cleanly)
+          - aac_he disabled (plain AAC-LC — better at high bitrates, no
+            artefacts from HE's spectral band replication)
+        """
         subtitle_filter = f"ass={subtitle_path}"
 
         cmd = [
@@ -186,15 +197,21 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             "-i", str(video_path),
             "-i", str(audio_path),
             "-vf", subtitle_filter,
+            # ── Video ──────────────────────────────────────────────────────
             "-c:v", "libx264",
             "-preset", self.cfg.video_preset,
             "-crf", str(self.cfg.video_crf),
             "-pix_fmt", "yuv420p",
+            # ── Audio — single encode, high quality ────────────────────────
             "-c:a", "aac",
-            "-b:a", "192k",
+            "-b:a", "320k",          # YouTube recommended; up from 192k
             "-ar", "44100",
-            "-movflags", "+faststart",   # Web optimized
-            "-shortest",
+            "-ac", "2",              # stereo
+            "-af", "aresample=resampler=soxr:osr=44100",  # soxr quality resample
+            # ── Container ──────────────────────────────────────────────────
+            "-movflags", "+faststart",
+            # NOTE: -shortest removed — it can silently truncate audio when
+            # WAV duration doesn't perfectly match video length.
             str(output_path),
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
