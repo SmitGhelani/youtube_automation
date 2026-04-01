@@ -5,12 +5,12 @@ anthropic>=0.25.0
 pytrends>=4.9.2
 requests>=2.31.0
 
-# TTS: Kokoro (primary -- local, free, near-human quality)
-# Model files downloaded by GitHub Actions workflow (not pip)
+# TTS: Kokoro (primary — local, free, near-human quality)
+# Model files downloaded by setup_ec2.sh (not pip)
 kokoro-onnx>=0.4.0
 soundfile>=0.12.1
 numpy>=1.24.0
-scipy>=1.11.0        # polyphase resampler: 24kHz -> 44100Hz with no artefacts
+scipy>=1.11.0        # polyphase resample: 24kHz->44100Hz, zero artefacts
 
 # Image / Thumbnail
 Pillow>=10.0.0

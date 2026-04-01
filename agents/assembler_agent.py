@@ -178,36 +178,25 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         video_type: str,
     ):
         """
-        Merge video + lossless WAV audio + subtitles -> final MP4.
-
-        This is the ONE AND ONLY AAC encode in the entire pipeline.
+        THE ONLY AAC ENCODE in the pipeline.
         audio_path must be the lossless PCM WAV from audio_agent.generate().
-
-        AAC settings:
-          320k CBR  -- YouTube recommended headroom (they re-encode to 128/192k AAC-LC)
-          44100 Hz stereo
-          soxr resampler -- highest quality, handles WAV input cleanly
-          -shortest removed -- it silently truncates audio when WAV != video length
+        320k AAC-LC, soxr resampler, no -shortest (it truncates audio).
         """
         cmd = [
             "ffmpeg", "-y",
             "-i", str(video_path),
             "-i", str(audio_path),
             "-vf", f"ass={subtitle_path}",
-            # Video
             "-c:v", "libx264",
             "-preset", self.cfg.video_preset,
             "-crf", str(self.cfg.video_crf),
             "-pix_fmt", "yuv420p",
-            # Audio -- single encode, high quality
             "-c:a", "aac",
             "-b:a", "320k",
             "-ar", "44100",
             "-ac", "2",
             "-af", "aresample=resampler=soxr:osr=44100",
-            # Container
             "-movflags", "+faststart",
-            # NOTE: -shortest intentionally omitted -- it truncates audio
             str(output_path),
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
