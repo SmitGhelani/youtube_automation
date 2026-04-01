@@ -1,42 +1,73 @@
 """
 config.py — Central configuration
-All secrets come from environment variables (set in GitHub Actions secrets).
+All secrets come from /etc/youtube-pipeline.env file.
 """
 
 import os
 from dataclasses import dataclass, field
 from typing import Optional
+from pathlib import Path
+
+
+def _load_secrets():
+    """Load API keys from /etc/youtube-pipeline.env file."""
+    secrets_file = Path("/etc/youtube-pipeline.env")
+    
+    if not secrets_file.exists():
+        return {}
+    
+    secrets = {}
+    try:
+        with open(secrets_file, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    if "=" in line:
+                        key, value = line.split("=", 1)
+                        secrets[key.strip()] = value.strip()
+    except Exception as e:
+        print(f"Warning: Could not load secrets from {secrets_file}: {e}")
+    
+    return secrets
+
+
+_SECRETS = _load_secrets()
+
+
+def _get_secret(key: str, default: str = "") -> str:
+    """Get a secret from the loaded file or environment."""
+    return _SECRETS.get(key) or os.environ.get(key, default)
 
 
 @dataclass
 class Config:
-    # ── API Keys (set as GitHub Actions / environment secrets) ──────────────
+    # ── API Keys (from /etc/youtube-pipeline.env) ────────────────────────────
     anthropic_api_key: str = field(
-        default_factory=lambda: os.environ["ANTHROPIC_API_KEY"]
+        default_factory=lambda: _get_secret("ANTHROPIC_API_KEY")
     )
     elevenlabs_api_key: str = field(
-        default_factory=lambda: os.environ.get("ELEVENLABS_API_KEY", "")
+        default_factory=lambda: _get_secret("ELEVENLABS_API_KEY")
     )
     pexels_api_key: str = field(
-        default_factory=lambda: os.environ["PEXELS_API_KEY"]
+        default_factory=lambda: _get_secret("PEXELS_API_KEY")
     )
     freesound_api_key: str = field(
-        default_factory=lambda: os.environ.get("FREESOUND_API_KEY", "")
+        default_factory=lambda: _get_secret("FREESOUND_API_KEY")
     )
     youtube_client_id: str = field(
-        default_factory=lambda: os.environ["YOUTUBE_CLIENT_ID"]
+        default_factory=lambda: _get_secret("YOUTUBE_CLIENT_ID")
     )
     youtube_client_secret: str = field(
-        default_factory=lambda: os.environ["YOUTUBE_CLIENT_SECRET"]
+        default_factory=lambda: _get_secret("YOUTUBE_CLIENT_SECRET")
     )
     youtube_refresh_token: str = field(
-        default_factory=lambda: os.environ["YOUTUBE_REFRESH_TOKEN"]
+        default_factory=lambda: _get_secret("YOUTUBE_REFRESH_TOKEN")
     )
     notification_email: str = field(
-        default_factory=lambda: os.environ.get("NOTIFICATION_EMAIL", "")
+        default_factory=lambda: _get_secret("NOTIFICATION_EMAIL")
     )
     sendgrid_api_key: str = field(
-        default_factory=lambda: os.environ.get("SENDGRID_API_KEY", "")
+        default_factory=lambda: _get_secret("SENDGRID_API_KEY")
     )
 
     # ── Channel / Content Settings ──────────────────────────────────────────
@@ -88,3 +119,20 @@ class Config:
     youtube_privacy: str = "public"
     made_for_kids: bool = False
     license_type: str = "youtube"     # Standard YouTube license
+
+    def __post_init__(self):
+        """Validate required credentials are available."""
+        required = {
+            "ANTHROPIC_API_KEY": self.anthropic_api_key,
+            "PEXELS_API_KEY": self.pexels_api_key,
+            "YOUTUBE_CLIENT_ID": self.youtube_client_id,
+            "YOUTUBE_CLIENT_SECRET": self.youtube_client_secret,
+            "YOUTUBE_REFRESH_TOKEN": self.youtube_refresh_token,
+        }
+        
+        missing = [name for name, value in required.items() if not value]
+        if missing:
+            raise ValueError(
+                f"Missing required credentials in /etc/youtube-pipeline.env:\n"
+                f"  {', '.join(missing)}"
+            )
