@@ -199,7 +199,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             "-movflags", "+faststart",
             str(output_path),
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        # Increase timeout to 30 minutes for slower presets on long videos
+        timeout = 1800 if self.cfg.video_preset == "slow" else 900
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         if result.returncode != 0:
             logger.error(f"Merge failed:\n{result.stderr}")
             raise RuntimeError("FFmpeg merge failed")
