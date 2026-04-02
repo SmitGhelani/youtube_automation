@@ -105,7 +105,7 @@ class AssemblerAgent:
             "-an",
             str(output_path),
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
         if result.returncode != 0:
             logger.error(f"Concat failed:\n{result.stderr}")
             raise RuntimeError("FFmpeg concat failed")
@@ -199,9 +199,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             "-movflags", "+faststart",
             str(output_path),
         ]
-        # Increase timeout to 30 minutes for slower presets on long videos
-        timeout = 1800 if self.cfg.video_preset == "slow" else 900
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=7200)
         if result.returncode != 0:
             logger.error(f"Merge failed:\n{result.stderr}")
             raise RuntimeError("FFmpeg merge failed")
