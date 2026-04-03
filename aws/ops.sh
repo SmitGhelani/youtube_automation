@@ -28,15 +28,21 @@ ENV_FILE="/etc/youtube-pipeline.env"
 _load_env() {
     if [ ! -f "$ENV_FILE" ]; then
         echo "ERROR: $ENV_FILE not found."
-        echo "Run: sudo cp aws/user_data.sh /etc/youtube-pipeline.env (then edit with real keys)"
         exit 1
     fi
-    # set -a exports every variable defined after it; source reads the file;
-    # set +a stops auto-export. This is the standard portable approach.
-    set -a
-    # shellcheck disable=SC1090
-    source "$ENV_FILE"
-    set +a
+    # Safe line-by-line parser — handles unquoted values containing spaces,
+    # ampersands, dashes, and other special chars that break `source`.
+    while IFS= read -r line || [ -n "$line" ]; do
+        [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+        [[ "$line" =~ ^[[:space:]]*# ]] && continue
+        key="${line%%=*}"
+        val="${line#*=}"
+        val="${val%\"}"
+        val="${val#\"}"
+        val="${val%\'}"
+        val="${val#\'}"
+        export "$key=$val"
+    done < "$ENV_FILE"
     echo "[ops] Loaded env from $ENV_FILE"
 }
 

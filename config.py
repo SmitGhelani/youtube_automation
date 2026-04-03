@@ -18,7 +18,8 @@ class Config:
         default_factory=lambda: os.environ.get("ELEVENLABS_API_KEY", "")
     )
     pexels_api_key: str = field(
-        default_factory=lambda: os.environ["PEXELS_API_KEY"]
+        default_factory=lambda: os.environ.get("PEXELS_API_KEY", "")
+        # No longer required — video is generated from cartoon art, not Pexels stock
     )
     freesound_api_key: str = field(
         default_factory=lambda: os.environ.get("FREESOUND_API_KEY", "")
