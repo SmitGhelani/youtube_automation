@@ -34,6 +34,7 @@ from agents.seo_agent import SEOAgent
 from agents.compliance_agent import ComplianceAgent
 from agents.upload_agent import UploadAgent
 from agents.notification_agent import NotificationAgent
+from story_state import StoryManager
 from config import Config
 
 # ─── Logging ────────────────────────────────────────────────────────────────
@@ -69,10 +70,10 @@ def run_pipeline(video_type: str = "short"):
     }
 
     try:
-        # ── Step 1: Find trending topic ──────────────────────────────────────
-        logger.info("Step 1/9 | Trend research...")
+        # ── Step 1: Plan next episode beat ──────────────────────────────────
+        logger.info("Step 1/9 | Planning next episode beat...")
         trend = TrendAgent(cfg).find_trending_topic(video_type)
-        logger.info(f"Topic selected: {trend['topic']}")
+        logger.info(f"Episode planned: {trend['topic']}")
 
         # ── Step 2: Generate script ──────────────────────────────────────────
         logger.info("Step 2/9 | Script generation...")
