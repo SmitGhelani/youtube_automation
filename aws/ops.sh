@@ -1,19 +1,16 @@
 #!/usr/bin/env bash
 # =============================================================================
 # aws/ops.sh
-#
-# Day-to-day operations helper for the EC2 pipeline.
-# Run on the EC2 instance after setup_ec2.sh has been executed.
-#
 # Usage:
-#   ./ops.sh status          — show timer and service status
 #   ./ops.sh run-short       — run short video pipeline right now
 #   ./ops.sh run-long        — run long video pipeline right now
+#   ./ops.sh status          — show timer and service status
 #   ./ops.sh logs-short      — tail short video logs
 #   ./ops.sh logs-long       — tail long video logs
+#   ./ops.sh logs-main       — tail main pipeline log
 #   ./ops.sh update          — git pull + pip install + restart timers
 #   ./ops.sh next-runs       — show when next runs are scheduled
-#   ./ops.sh disk            — show disk usage (workspace can grow large)
+#   ./ops.sh disk            — show disk usage
 #   ./ops.sh clean           — delete workspace dirs older than 7 days
 # =============================================================================
 
@@ -22,8 +19,42 @@ set -euo pipefail
 APP_DIR="/opt/youtube-pipeline"
 VENV_DIR="$APP_DIR/venv"
 LOG_DIR="/var/log/youtube-pipeline"
+ENV_FILE="/etc/youtube-pipeline.env"
+
+# ── Load /etc/youtube-pipeline.env into the current shell ────────────────────
+# This is needed when running ops.sh directly (not via systemd, which loads it
+# automatically via EnvironmentFile=). Without this, ANTHROPIC_API_KEY etc.
+# are missing and the pipeline crashes immediately with KeyError.
+_load_env() {
+    if [ ! -f "$ENV_FILE" ]; then
+        echo "ERROR: $ENV_FILE not found."
+        echo "Run: sudo cp aws/user_data.sh /etc/youtube-pipeline.env (then edit with real keys)"
+        exit 1
+    fi
+    # set -a exports every variable defined after it; source reads the file;
+    # set +a stops auto-export. This is the standard portable approach.
+    set -a
+    # shellcheck disable=SC1090
+    source "$ENV_FILE"
+    set +a
+    echo "[ops] Loaded env from $ENV_FILE"
+}
 
 case "${1:-help}" in
+
+  run-short)
+    _load_env
+    echo "Running short video pipeline..."
+    cd "$APP_DIR"
+    "$VENV_DIR/bin/python" main.py --type short
+    ;;
+
+  run-long)
+    _load_env
+    echo "Running long video pipeline..."
+    cd "$APP_DIR"
+    "$VENV_DIR/bin/python" main.py --type long
+    ;;
 
   status)
     echo "=== Timer status ==="
@@ -34,18 +65,6 @@ case "${1:-help}" in
     echo ""
     echo "=== Last long run ==="
     sudo systemctl status youtube-long.service --no-pager -l 2>/dev/null | tail -20 || true
-    ;;
-
-  run-short)
-    echo "Running short video pipeline now..."
-    cd "$APP_DIR"
-    sudo -u ubuntu "$VENV_DIR/bin/python" main.py --type short
-    ;;
-
-  run-long)
-    echo "Running long video pipeline now..."
-    cd "$APP_DIR"
-    sudo -u ubuntu "$VENV_DIR/bin/python" main.py --type long
     ;;
 
   logs-short)
@@ -65,7 +84,7 @@ case "${1:-help}" in
     cd "$APP_DIR"
     sudo git pull origin main
     echo "Updating Python dependencies..."
-    sudo -u ubuntu "$VENV_DIR/bin/pip" install -r requirements.txt --quiet
+    "$VENV_DIR/bin/pip" install -r requirements.txt --quiet
     echo "Reloading systemd..."
     sudo systemctl daemon-reload
     sudo systemctl restart youtube-short.timer youtube-long.timer
@@ -82,7 +101,7 @@ case "${1:-help}" in
     df -h /
     echo ""
     echo "=== Workspace size ==="
-    du -sh "$APP_DIR/workspace" 2>/dev/null || echo "No workspace directory yet"
+    du -sh "$APP_DIR/workspace" 2>/dev/null || echo "No workspace yet"
     echo ""
     echo "=== Log size ==="
     du -sh "$LOG_DIR" 2>/dev/null || echo "No logs yet"
@@ -95,7 +114,7 @@ case "${1:-help}" in
     ;;
 
   help|*)
-    echo "Usage: $0 {status|run-short|run-long|logs-short|logs-long|logs-main|update|next-runs|disk|clean}"
+    echo "Usage: $0 {run-short|run-long|status|logs-short|logs-long|logs-main|update|next-runs|disk|clean}"
     ;;
 
 esac
