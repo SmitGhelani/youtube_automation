@@ -141,7 +141,6 @@ class VideoAgent:
                 "duration":      clip_dur,
                 "aspect_ratio":  aspect,
                 "resolution":    "720p",
-                "model":         "seedance-1-5-pro",
             }
             submit_url = f"https://queue.fal.run/{SEEDANCE_MODEL}"
             resp = requests.post(submit_url, headers=headers,
