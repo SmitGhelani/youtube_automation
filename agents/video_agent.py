@@ -41,8 +41,8 @@ MOTIONS = [
 ]
 
 # Seedance model IDs — swap SEEDANCE_MODEL to "fal-ai/seedance-2" when 2.0 GA
-SEEDANCE_MODEL   = "fal-ai/seedance-1-5-pro/text-to-video"
-SEEDANCE_MODEL_V2 = "fal-ai/seedance-2/text-to-video"  # ready for when GA
+SEEDANCE_MODEL   = "fal-ai/bytedance/seedance/v1.5/pro/text-to-video"
+SEEDANCE_MODEL_V2 = "fal-ai/bytedance/seedance/v2.0/pro/text-to-video"  # ready for when GA
 
 MAHABHARAT_STYLE = (
     "ancient India, Mahabharat epic, cinematic, painterly illustration style, "
