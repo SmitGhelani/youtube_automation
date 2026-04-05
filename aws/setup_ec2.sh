@@ -133,22 +133,26 @@ else
 # Permissions are set to 640 (root:ubuntu readable only).
 
 # ── Required API keys ─────────────────────────────────────────────────────────
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
-PEXELS_API_KEY=your_pexels_api_key_here
+# Get free at: aistudio.google.com (no credit card, 1500 RPD free)
+GEMINI_API_KEY=your_gemini_api_key_here
 YOUTUBE_CLIENT_ID=your_youtube_client_id_here
 YOUTUBE_CLIENT_SECRET=your_youtube_client_secret_here
 YOUTUBE_REFRESH_TOKEN=your_youtube_refresh_token_here
 
+# ── Video generation (fal.ai Seedance) ────────────────────────────────────────
+# Get at: fal.ai — free credits on signup, then ~$0.05/5s video
+FAL_API_KEY=your_fal_api_key_here
+
 # ── Optional API keys ─────────────────────────────────────────────────────────
+ANTHROPIC_API_KEY=
 ELEVENLABS_API_KEY=
-FREESOUND_API_KEY=
 SENDGRID_API_KEY=
 NOTIFICATION_EMAIL=
 
 # ── Channel settings ──────────────────────────────────────────────────────────
-CHANNEL_NICHE=AI & Technology — Latest discoveries, tools, and breakthroughs
+CHANNEL_NICHE="Mahabharat — The Epic Retold. Cinematic Mahabharat story series on YouTube."
 
-# ── AWS-specific (optional — for CloudWatch log shipping) ─────────────────────
+# ── AWS-specific ──────────────────────────────────────────────────────────────
 AWS_DEFAULT_REGION=ap-south-1
 ENVEOF
     sudo chmod 640 "$ENV_FILE"

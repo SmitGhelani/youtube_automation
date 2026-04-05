@@ -1,28 +1,30 @@
-# Core AI
-anthropic>=0.25.0
+# ── LLM: Gemini (replaces Claude — free tier) ──────────────────────────────
+google-generativeai>=0.8.0
 
-# Trend research
-pytrends>=4.9.2
+# ── Video: fal.ai Seedance (paid per-use, free credits on signup) ───────────
+# No extra SDK needed — uses requests directly (REST API)
 requests>=2.31.0
 
-# TTS: Kokoro (primary — local, free, near-human quality)
-# Model files downloaded by setup_ec2.sh (not pip)
+# ── TTS: Kokoro (primary — local, free, near-human quality) ─────────────────
 kokoro-onnx>=0.4.0
 soundfile>=0.12.1
 numpy>=1.24.0
-scipy>=1.11.0        # polyphase resample: 24kHz->44100Hz, zero artefacts
+scipy>=1.11.0
 
-# Image / Thumbnail
+# ── Image: Pillow (fallback scene generation) ────────────────────────────────
 Pillow>=10.0.0
 
-# YouTube upload
+# ── YouTube upload ────────────────────────────────────────────────────────────
 google-api-python-client>=2.100.0
 google-auth>=2.23.0
 google-auth-oauthlib>=1.1.0
 google-auth-httplib2>=0.1.1
 
-# Email notifications (optional)
+# ── Trend / SEO helpers ───────────────────────────────────────────────────────
+pytrends>=4.9.2
+
+# ── Notifications ─────────────────────────────────────────────────────────────
 sendgrid>=6.10.0
 
-# Utilities
+# ── Utilities ─────────────────────────────────────────────────────────────────
 python-dotenv>=1.0.0

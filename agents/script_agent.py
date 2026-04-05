@@ -1,31 +1,39 @@
 """
 agents/script_agent.py
 
-Generates animated cartoon story scripts for "Milo & Luna in Whimble".
+Generates Mahabharat scripts using Gemini 2.5 Flash (free).
 
-Short: 55-60 second continuation episode — picks up from yesterday
-Long:  10-minute weekly recap+expansion OR standalone adventure
+Short: 60-second dramatic TEASER — hooks viewers for Saturday episode
+Long:  15-minute full Mahabharat episode — banger every Saturday
 """
 
 import json
 import logging
-import anthropic
+import google.generativeai as genai
 
 logger = logging.getLogger("ScriptAgent")
 
-CHARACTERS = """
-CHARACTERS (stay 100% consistent):
-- Milo (10, boy): brave, kind, red scarf, loves puzzles. Voice: warm, curious.
-- Luna (10, girl): creative, magic compass, sketchbook. Voice: bright, enthusiastic.
-- Pip (tiny fox, speaks): cheeky, loyal, secretly brave, loves acorns. Voice: squeaky, funny.
-WORLD: Whimble — magical hidden land, warm Pixar tone, age 4-10, always family safe.
+STYLE_GUIDE = """
+NARRATION STYLE:
+- Voice: deep, reverent, like a court poet reciting before a king
+- Sentences: mix of long epic lines and short dramatic punches
+- Use Sanskrit words naturally: dharma, karma, kshatriya, yuddha, etc.
+- Sound words for action: TWANG of bowstrings, CLASH of maces, THUNDER of chariots
+- Emotional beats: honour, duty, love, betrayal, sacrifice — feel them
+- Never modern slang. Always timeless.
+VISUAL STYLE FOR SCENES:
+- Cinematic ancient India: ochre palaces, dense forests, vast battlefields
+- Characters: regally dressed, powerful, emotionally expressive
+- Lighting: golden dusk, dramatic torchlight, blazing sun over Kurukshetra
+- Art style: detailed painterly illustration, like Amar Chitra Katha but cinematic
 """
 
 
 class ScriptAgent:
     def __init__(self, config):
-        self.cfg    = config
-        self.client = anthropic.Anthropic(api_key=config.anthropic_api_key)
+        self.cfg = config
+        genai.configure(api_key=config.gemini_api_key)
+        self.model = genai.GenerativeModel(config.gemini_model)
 
     def generate(self, trend: dict, video_type: str) -> dict:
         if video_type == "short":
@@ -33,28 +41,25 @@ class ScriptAgent:
         else:
             return self._generate_long(trend)
 
-    # ── Short script ──────────────────────────────────────────────────────────
-
     def _generate_short(self, trend: dict) -> dict:
-        prompt = f"""You are writing a 60-second episode of "Milo & Luna in Whimble" — a gentle animated cartoon for children aged 4-10.
+        prompt = f"""You are writing a 60-second TEASER SHORT for the Mahabharat YouTube series.
 
-{CHARACTERS}
+{STYLE_GUIDE}
 
 EPISODE PLAN:
-Topic/Title: {trend['topic']}
-Story beat: {trend['angle']}
+Title: {trend['topic']}
+Dramatic moment: {trend['angle']}
 Opening hook: {trend['hook']}
-What happens: {trend['episode_beat']}
+What it shows: {trend['episode_beat']}
 How it ends: {trend['cliffhanger_or_ending']}
 
-Write the full 60-second narration script as if a warm storyteller is narrating.
-Sentences must be SHORT — kids' attention spans are small.
-Use sound words (WHOOSH, CRUNCH, GIGGLE) in narration naturally.
-Keep it magical, funny, and warm. No scary moments.
+Write a 60-second TEASER narration that builds to a dramatic cut.
+Keep sentences powerful and punchy. This is a TEASER, not the full story.
+End with a line that makes viewers NEED to watch Saturday's full episode.
 
 Return ONLY valid JSON (no markdown):
 {{
-  "title_raw": "Episode title",
+  "title_raw": "Teaser title",
   "topic": "{trend['topic']}",
   "video_type": "short",
   "duration_sec": 58,
@@ -62,260 +67,264 @@ Return ONLY valid JSON (no markdown):
     {{
       "id": 1,
       "type": "hook",
-      "text": "narration (5-8 seconds worth)",
+      "text": "opening dramatic narration (6-8 seconds)",
       "duration_sec": 7,
-      "broll_query": "animated cartoon forest magical",
-      "caption": "short on-screen text",
-      "emotion": "excited"
+      "broll_query": "epic ancient india cinematic dramatic palace",
+      "caption": "dramatic on-screen text",
+      "emotion": "awe"
     }},
     {{
       "id": 2,
-      "type": "story",
-      "text": "narration (12-15 seconds)",
-      "duration_sec": 13,
-      "broll_query": "cartoon adventure kids forest",
-      "caption": "caption text",
-      "emotion": "curious"
+      "type": "scene",
+      "text": "scene narration (12 seconds)",
+      "duration_sec": 12,
+      "broll_query": "mahabharat warrior king ancient india epic",
+      "caption": "caption overlay",
+      "emotion": "tension"
     }},
     {{
       "id": 3,
-      "type": "story",
-      "text": "narration (12-15 seconds)",
-      "duration_sec": 13,
-      "broll_query": "cartoon magical glowing cave",
-      "caption": "caption text",
-      "emotion": "amazed"
+      "type": "scene",
+      "text": "rising tension narration (12 seconds)",
+      "duration_sec": 12,
+      "broll_query": "ancient india battlefield kurukshetra dramatic",
+      "caption": "caption overlay",
+      "emotion": "dread"
     }},
     {{
       "id": 4,
-      "type": "story",
-      "text": "narration (12-15 seconds)",
-      "duration_sec": 13,
-      "broll_query": "cartoon kids discover treasure",
-      "caption": "caption text",
-      "emotion": "wonder"
+      "type": "scene",
+      "text": "peak dramatic moment (10 seconds)",
+      "duration_sec": 10,
+      "broll_query": "mahabharat dramatic confrontation epic",
+      "caption": "key dialogue line",
+      "emotion": "climax"
     }},
     {{
       "id": 5,
       "type": "cliffhanger",
-      "text": "cliffhanger or heartwarming ending narration",
+      "text": "hard cut cliffhanger narration (7 seconds)",
       "duration_sec": 7,
-      "broll_query": "cartoon mystery door glowing",
-      "caption": "WHAT HAPPENS NEXT? 👀",
-      "emotion": "suspense"
+      "broll_query": "ancient india dramatic silhouette sunset epic",
+      "caption": "FULL EPISODE THIS SATURDAY ⚔️",
+      "emotion": "shock"
     }},
     {{
       "id": 6,
       "type": "cta",
-      "text": "Follow Milo, Luna and Pip for a new adventure every single day!",
+      "text": "Subscribe for the full Mahabharat every Saturday.",
       "duration_sec": 5,
-      "broll_query": "cartoon kids waving happy",
-      "caption": "NEW EPISODE EVERY DAY! 🦊✨",
-      "emotion": "warm"
+      "broll_query": "mahabharat title card epic",
+      "caption": "SUBSCRIBE ⚔️ EVERY SATURDAY",
+      "emotion": "epic"
     }}
   ],
-  "background_music_mood": "calm background",
-  "color_theme": "warm forest greens and golden light",
-  "thumbnail_text": "3-4 word episode title",
-  "thumbnail_emoji": "✨",
-  "keywords": ["milo luna cartoon", "whimble", "kids animation", "cartoon series"],
-  "episode_summary": "2-3 sentence summary of what happened for story continuity tracking",
+  "background_music_mood": "cinematic inspiring",
+  "color_theme": "deep ochre and crimson with gold",
+  "thumbnail_text": "3-4 word dramatic title",
+  "thumbnail_emoji": "⚔️",
+  "keywords": ["mahabharat", "mahabharat shorts", "epic india", "mahabharat series"],
+  "episode_summary": "2-3 sentence summary of what this teaser showed for continuity tracking",
   "updated_character_state": {{
-    "Milo": {{"mood": "...", "location": "...", "last_action": "...", "items": [], "friends_met": [], "goal": "..."}},
-    "Luna": {{"mood": "...", "location": "...", "last_action": "...", "items": [], "friends_met": [], "goal": "..."}},
-    "Pip":  {{"mood": "...", "location": "...", "last_action": "...", "items": [], "friends_met": [], "goal": "..."}}
+    "Yudhishthira": {{"location": "...", "mood": "...", "last_action": "..."}},
+    "Arjuna":       {{"location": "...", "mood": "...", "last_action": "..."}},
+    "Bhima":        {{"location": "...", "mood": "...", "last_action": "..."}},
+    "Duryodhana":   {{"location": "...", "mood": "...", "last_action": "..."}},
+    "Krishna":      {{"location": "...", "mood": "...", "last_action": "..."}},
+    "Draupadi":     {{"location": "...", "mood": "...", "last_action": "..."}},
+    "Karna":        {{"location": "...", "mood": "...", "last_action": "..."}},
+    "Bhishma":      {{"location": "...", "mood": "...", "last_action": "..."}}
   }},
   "updated_world_state": {{
-    "time_of_day": "...",
-    "weather": "...",
-    "discovered_locations": [],
-    "unsolved_mysteries": [],
-    "friendly_characters_met": [],
-    "obstacles_overcome": []
+    "era": "...",
+    "current_kingdom": "...",
+    "key_events_done": [],
+    "tension_level": "...",
+    "upcoming_event": "..."
   }}
 }}"""
 
-        msg = self.client.messages.create(
-            model=self.cfg.claude_model, max_tokens=3000,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        text   = msg.content[0].text.strip().replace("```json","").replace("```","").strip()
+        resp  = self.model.generate_content(prompt)
+        text  = resp.text.strip().replace("```json","").replace("```","").strip()
         script = json.loads(text)
         script["video_type"] = "short"
-
-        # Advance story state
         self._advance_story(script, "short")
-
-        logger.info(f"[ScriptAgent] Short script: {script['title_raw']}")
+        logger.info(f"[ScriptAgent] Short teaser: {script['title_raw']}")
         return script
 
-    # ── Long script ───────────────────────────────────────────────────────────
-
     def _generate_long(self, trend: dict) -> dict:
-        is_merge = trend.get("source") == "weekly_merge"
-        mode_note = (
-            "This is a WEEKLY RECAP video — start with 'Previously on Whimble...' recapping the week's Shorts, "
-            "then expand into a new extended adventure."
-            if is_merge else
-            "This is a STANDALONE ADVENTURE — self-contained, works for new viewers."
-        )
+        prompt = f"""You are writing a FULL 15-MINUTE SATURDAY EPISODE of the Mahabharat YouTube series.
+This is the banger. The full cinematic episode. Viewers waited all week.
 
-        prompt = f"""You are writing a 10-minute episode of "Milo & Luna in Whimble" — a gentle animated cartoon for children aged 4-10.
-
-{CHARACTERS}
-
-{mode_note}
+{STYLE_GUIDE}
 
 EPISODE PLAN:
 Title: {trend['topic']}
-Story: {trend['episode_beat']}
+Story arc: {trend['angle']}
+Opening hook: {trend['hook']}
+Full story: {trend['episode_beat']}
 Ending: {trend['cliffhanger_or_ending']}
 
-Write a full 10-minute narrated script. Warm storyteller voice.
-Short sentences. Sound words. Magical and funny. Never scary.
+Write a complete 15-minute (900 seconds) narrated episode.
+8 chapters. Each chapter is a full scene with complete narration.
+This should feel like watching a prestige TV episode in audio form.
 
 Return ONLY valid JSON (no markdown):
 {{
   "title_raw": "full episode title",
   "topic": "{trend['topic']}",
   "video_type": "long",
-  "duration_sec": 600,
+  "duration_sec": 900,
   "chapters": [
     {{
       "id": 1,
-      "title": "Previously on Whimble / Opening Hook",
+      "title": "Previously — The Teasers Revealed",
       "timestamp_sec": 0,
-      "type": "recap_or_hook",
-      "text": "full narration for this chapter",
+      "type": "recap",
+      "text": "full narration recapping this week's teaser shorts (90 seconds)",
       "duration_sec": 90,
-      "broll_queries": ["cartoon adventure recap", "magical forest kids"],
+      "broll_queries": ["mahabharat dramatic epic ancient india", "palace hastinapura ancient"],
       "key_points": ["recap point 1", "recap point 2"],
-      "caption_overlays": ["PREVIOUSLY ON WHIMBLE... ✨"]
+      "caption_overlays": ["PREVIOUSLY THIS WEEK..."]
     }},
     {{
       "id": 2,
-      "title": "The Adventure Begins",
+      "title": "The Scene Opens",
       "timestamp_sec": 90,
-      "type": "story",
-      "text": "narration...",
+      "type": "scene",
+      "text": "full opening scene narration (120 seconds)",
       "duration_sec": 120,
-      "broll_queries": ["cartoon kids explore forest"],
-      "key_points": ["story point"],
+      "broll_queries": ["ancient india epic cinematic"],
+      "key_points": ["key point"],
       "caption_overlays": ["caption"]
     }},
     {{
       "id": 3,
-      "title": "The Big Discovery",
+      "title": "Rising Tension",
       "timestamp_sec": 210,
-      "type": "story",
-      "text": "narration...",
+      "type": "scene",
+      "text": "narration (120 seconds)",
       "duration_sec": 120,
-      "broll_queries": ["cartoon magical discovery"],
-      "key_points": ["discovery"],
+      "broll_queries": ["mahabharat dramatic confrontation"],
+      "key_points": ["key point"],
       "caption_overlays": ["caption"]
     }},
     {{
       "id": 4,
-      "title": "The Challenge",
+      "title": "The Turning Point",
       "timestamp_sec": 330,
-      "type": "story",
-      "text": "narration...",
+      "type": "scene",
+      "text": "narration (120 seconds)",
       "duration_sec": 120,
-      "broll_queries": ["cartoon kids puzzle adventure"],
-      "key_points": ["challenge"],
+      "broll_queries": ["ancient india warrior epic"],
+      "key_points": ["key point"],
       "caption_overlays": ["caption"]
     }},
     {{
       "id": 5,
-      "title": "Resolution and Surprise",
+      "title": "The Climax",
       "timestamp_sec": 450,
-      "type": "resolution",
-      "text": "narration...",
-      "duration_sec": 90,
-      "broll_queries": ["cartoon happy ending"],
-      "key_points": ["resolution"],
+      "type": "climax",
+      "text": "narration (120 seconds)",
+      "duration_sec": 120,
+      "broll_queries": ["mahabharat battle epic dramatic"],
+      "key_points": ["key point"],
       "caption_overlays": ["caption"]
     }},
     {{
       "id": 6,
-      "title": "Until Next Time...",
-      "timestamp_sec": 540,
+      "title": "Aftermath and Reckoning",
+      "timestamp_sec": 570,
+      "type": "resolution",
+      "text": "narration (120 seconds)",
+      "duration_sec": 120,
+      "broll_queries": ["ancient india dramatic aftermath"],
+      "key_points": ["key point"],
+      "caption_overlays": ["caption"]
+    }},
+    {{
+      "id": 7,
+      "title": "The Vow / The Revelation",
+      "timestamp_sec": 690,
+      "type": "revelation",
+      "text": "narration — a character makes a vow or a shocking truth is revealed (90 seconds)",
+      "duration_sec": 90,
+      "broll_queries": ["dramatic vow ancient india"],
+      "key_points": ["key point"],
+      "caption_overlays": ["caption"]
+    }},
+    {{
+      "id": 8,
+      "title": "Next Week on Mahabharat",
+      "timestamp_sec": 780,
       "type": "outro",
-      "text": "warm goodbye + tease of next week",
-      "duration_sec": 60,
-      "broll_queries": ["cartoon kids waving sunset"],
+      "text": "epic outro + teaser for next week (120 seconds)",
+      "duration_sec": 120,
+      "broll_queries": ["mahabharat epic title dramatic"],
       "key_points": ["subscribe", "next week tease"],
-      "caption_overlays": ["SEE YOU NEXT WEEK! 🦊✨"]
+      "caption_overlays": ["NEXT SATURDAY ⚔️"]
     }}
   ],
-  "background_music_mood": "calm background",
-  "color_theme": "warm golden forest tones",
+  "background_music_mood": "cinematic inspiring",
+  "color_theme": "deep crimson, gold and ochre of ancient India",
   "thumbnail_text": "4-6 word episode title",
-  "thumbnail_emoji": "🌟",
-  "keywords": ["milo luna cartoon", "whimble cartoon series", "kids cartoon", "animated story"],
+  "thumbnail_emoji": "⚔️",
+  "keywords": ["mahabharat full episode", "mahabharat saturday", "epic mahabharat", "mahabharat series"],
   "episode_summary": "3-4 sentence summary for story continuity",
   "updated_character_state": {{
-    "Milo": {{"mood": "...", "location": "...", "last_action": "...", "items": [], "friends_met": [], "goal": "..."}},
-    "Luna": {{"mood": "...", "location": "...", "last_action": "...", "items": [], "friends_met": [], "goal": "..."}},
-    "Pip":  {{"mood": "...", "location": "...", "last_action": "...", "items": [], "friends_met": [], "goal": "..."}}
+    "Yudhishthira": {{"location": "...", "mood": "...", "last_action": "..."}},
+    "Arjuna":       {{"location": "...", "mood": "...", "last_action": "..."}},
+    "Bhima":        {{"location": "...", "mood": "...", "last_action": "..."}},
+    "Duryodhana":   {{"location": "...", "mood": "...", "last_action": "..."}},
+    "Krishna":      {{"location": "...", "mood": "...", "last_action": "..."}},
+    "Draupadi":     {{"location": "...", "mood": "...", "last_action": "..."}},
+    "Karna":        {{"location": "...", "mood": "...", "last_action": "..."}},
+    "Bhishma":      {{"location": "...", "mood": "...", "last_action": "..."}}
   }},
   "updated_world_state": {{
-    "time_of_day": "...",
-    "weather": "...",
-    "discovered_locations": [],
-    "unsolved_mysteries": [],
-    "friendly_characters_met": [],
-    "obstacles_overcome": []
-  }},
-  "new_arc_name": null
+    "era": "...",
+    "current_kingdom": "...",
+    "key_events_done": [],
+    "tension_level": "...",
+    "upcoming_event": "..."
+  }}
 }}
 
-Include all 6 chapters with full narration text."""
+Write ALL 8 chapters with complete narration text. Make it epic."""
 
-        msg = self.client.messages.create(
-            model=self.cfg.claude_model, max_tokens=8000,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        text   = msg.content[0].text.strip().replace("```json","").replace("```","").strip()
+        resp   = self.model.generate_content(prompt, generation_config={"max_output_tokens": 8192})
+        text   = resp.text.strip().replace("```json","").replace("```","").strip()
         script = json.loads(text)
         script["video_type"] = "long"
-
-        self._advance_story(script, "long", new_arc_name=trend.get("new_arc_name"))
-
-        logger.info(f"[ScriptAgent] Long script: {script['title_raw']} ({len(script['chapters'])} chapters)")
+        self._advance_story(script, "long")
+        logger.info(f"[ScriptAgent] Long EP: {script['title_raw']} ({len(script['chapters'])} chapters)")
         return script
 
-    # ── Story state advancement ───────────────────────────────────────────────
-
-    def _advance_story(self, script: dict, video_type: str, new_arc_name: str = None):
-        """Update persistent story state after script generation."""
+    def _advance_story(self, script: dict, video_type: str):
         try:
             from story_state import StoryManager
-            sm = StoryManager()
-            summary  = script.get("episode_summary", "")
-            chars    = script.get("updated_character_state", {})
-            world    = script.get("updated_world_state", {})
+            sm      = StoryManager()
+            summary = script.get("episode_summary", "")
+            chars   = script.get("updated_character_state", {})
+            world   = script.get("updated_world_state", {})
 
-            # Merge — only update keys that exist (don't wipe unchanged data)
-            current_chars = sm.state["character_state"]
+            cur_chars = sm.state["character_state"]
             for name, updates in chars.items():
-                if name in current_chars and updates:
-                    current_chars[name].update({k: v for k, v in updates.items() if v})
+                if name in cur_chars and updates:
+                    cur_chars[name].update({k: v for k, v in updates.items() if v})
 
-            current_world = sm.state["world_state"]
+            cur_world = sm.state["world_state"]
             for key, val in world.items():
                 if val:
                     if isinstance(val, list):
-                        existing = current_world.get(key, [])
-                        current_world[key] = list(set(existing + val))
+                        cur_world[key] = list(set(cur_world.get(key, []) + val))
                     else:
-                        current_world[key] = val
+                        cur_world[key] = val
 
             if video_type == "short":
-                sm.advance_short(summary, current_chars, current_world)
+                sm.advance_short(summary, cur_chars, cur_world)
             else:
-                sm.advance_long(summary, current_chars, current_world, new_arc_name)
-
+                sm.advance_long(summary, cur_chars, cur_world)
         except Exception as e:
             logger.warning(f"[ScriptAgent] Story state update failed (non-fatal): {e}")
 

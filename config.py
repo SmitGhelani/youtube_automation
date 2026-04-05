@@ -10,16 +10,24 @@ from typing import Optional
 
 @dataclass
 class Config:
-    # ── API Keys (set as GitHub Actions / environment secrets) ──────────────
+    # ── API Keys ──────────────────────────────────────────────────────────────
+    # Gemini (replaces Claude — free tier, 1500 RPD on Flash)
+    gemini_api_key: str = field(
+        default_factory=lambda: os.environ["GEMINI_API_KEY"]
+    )
+    # Anthropic key kept as optional fallback
     anthropic_api_key: str = field(
-        default_factory=lambda: os.environ["ANTHROPIC_API_KEY"]
+        default_factory=lambda: os.environ.get("ANTHROPIC_API_KEY", "")
+    )
+    # fal.ai for Seedance video generation (free credits on signup, then ~$0.05/5s)
+    fal_api_key: str = field(
+        default_factory=lambda: os.environ.get("FAL_API_KEY", "")
     )
     elevenlabs_api_key: str = field(
         default_factory=lambda: os.environ.get("ELEVENLABS_API_KEY", "")
     )
     pexels_api_key: str = field(
         default_factory=lambda: os.environ.get("PEXELS_API_KEY", "")
-        # No longer required — video is generated from cartoon art, not Pexels stock
     )
     freesound_api_key: str = field(
         default_factory=lambda: os.environ.get("FREESOUND_API_KEY", "")
@@ -44,11 +52,11 @@ class Config:
     channel_niche: str = field(
         default_factory=lambda: os.environ.get(
             "CHANNEL_NICHE",
-            "Milo & Luna in Whimble — animated cartoon adventure series for kids aged 4-10"
+            "Mahabharat — The Epic Retold. Cinematic Mahabharat story series on YouTube."
         )
     )
     channel_language: str = "English"
-    target_audience: str = "Children aged 4-10 and their parents"
+    target_audience: str = "Indian mythology fans, Mahabharat devotees, global epic story lovers"
 
     # ── Video Quality ────────────────────────────────────────────────────────
     short_resolution: str = "1080x1920"   # 9:16 vertical for Shorts
@@ -60,7 +68,7 @@ class Config:
     # ── Voice Settings — Kokoro (primary, local, free) ───────────────────────
     # Voices: af_sarah (warm female), af_nicole, am_adam, am_michael,
     #         bf_emma (British female), bm_george (British male)
-    kokoro_voice: str = "af_sarah"   # American female — warm, clear, great for YouTube
+    kokoro_voice: str = "am_adam"    # American male — deep, authoritative — fits epic narrator
     kokoro_speed: float = 1.0        # 1.0 = natural; 0.9 = slightly slower/clearer
     kokoro_lang: str = "en-us"
 
@@ -72,10 +80,16 @@ class Config:
     # ── Timing ───────────────────────────────────────────────────────────────
     short_max_duration_sec: int = 59      # Keep under 60s for Shorts
     long_min_duration_sec: int = 480      # 8 minutes minimum for monetization
-    long_max_duration_sec: int = 720      # 12 minutes target
+    long_max_duration_sec: int = 900      # 15 minutes — Saturday banger
 
-    # ── Claude Model ─────────────────────────────────────────────────────────
-    claude_model: str = "claude-sonnet-4-6"
+    # ── LLM Model (Gemini — free tier) ───────────────────────────────────────
+    # gemini-2.5-flash: free tier, 15 RPM, 1500 RPD, best free model
+    gemini_model: str = "gemini-2.5-flash"
+
+    # ── Video Model (Seedance via fal.ai) ─────────────────────────────────────
+    # Seedance 1.5 Pro now. When Seedance 2.0 API goes GA, change to:
+    # seedance_model = "fal-ai/seedance-2/text-to-video"
+    seedance_model: str = "fal-ai/seedance-1-5-pro/text-to-video"
 
     # ── Compliance ───────────────────────────────────────────────────────────
     banned_topics: list = field(default_factory=lambda: [
@@ -85,7 +99,7 @@ class Config:
     ])
 
     # ── Upload defaults ───────────────────────────────────────────────────────
-    youtube_category_id: str = "1"    # Film & Animation (best for cartoon series)
+    youtube_category_id: str = "22"   # People & Blogs / Entertainment — best for Mahabharat
     youtube_privacy: str = "public"
-    made_for_kids: bool = True        # Kids cartoon — must be true for compliance
+    made_for_kids: bool = False       # Mahabharat is for general audience
     license_type: str = "youtube"
