@@ -1,15 +1,15 @@
 """agents/seo_agent.py — SEO metadata for Mahabharat series."""
 import json
 import logging
-import google.generativeai as genai
+import anthropic
 
 logger = logging.getLogger("SEOAgent")
+
 
 class SEOAgent:
     def __init__(self, config):
         self.cfg = config
-        genai.configure(api_key=config.gemini_api_key)
-        self.model = genai.GenerativeModel(config.gemini_model)
+        self.client = anthropic.Anthropic(api_key=config.anthropic_api_key)
 
     def generate(self, script: dict, trend: dict, video_type: str) -> dict:
         is_short = video_type == "short"
@@ -24,7 +24,7 @@ Generate YouTube metadata optimised for Mahabharat mythology content.
 Titles should be dramatic and click-worthy. Tags should cover Mahabharat
 search terms in English and transliterated Sanskrit.
 
-Return ONLY valid JSON:
+Return ONLY valid JSON, no markdown fences:
 {{
   "title": "YouTube title max 70 chars — dramatic, includes episode context",
   "description": "700-900 chars. What happens in this episode. About the series. 3 hashtags: #Mahabharat #MahabharatEpic #EpicIndia",
@@ -35,8 +35,12 @@ Return ONLY valid JSON:
   "music_attribution": "Music: Bensound.com (CC licensed)"
 }}"""
 
-        resp     = self.model.generate_content(prompt)
-        text     = resp.text.strip().replace("```json","").replace("```","").strip()
+        message  = self.client.messages.create(
+            model=self.cfg.claude_model,
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text     = message.content[0].text.strip().replace("```json", "").replace("```", "").strip()
         metadata = json.loads(text)
         logger.info(f"[SEOAgent] {metadata['title']}")
         return metadata
