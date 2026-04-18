@@ -1,7 +1,9 @@
 """
 agents/script_agent.py
 
-Generates Mahabharat scripts using Gemini 2.5 Flash (free).
+Generates Mahabharat scripts using Claude (Anthropic).
+Replaced google.generativeai (deprecated, 20 RPD free limit) with
+anthropic SDK which uses ANTHROPIC_API_KEY already in the environment.
 
 Short: 60-second dramatic TEASER — hooks viewers for Saturday episode
 Long:  15-minute full Mahabharat episode — banger every Saturday
@@ -9,7 +11,7 @@ Long:  15-minute full Mahabharat episode — banger every Saturday
 
 import json
 import logging
-import google.generativeai as genai
+import anthropic
 
 logger = logging.getLogger("ScriptAgent")
 
@@ -32,8 +34,16 @@ VISUAL STYLE FOR SCENES:
 class ScriptAgent:
     def __init__(self, config):
         self.cfg = config
-        genai.configure(api_key=config.gemini_api_key)
-        self.model = genai.GenerativeModel(config.gemini_model)
+        self.client = anthropic.Anthropic(api_key=config.anthropic_api_key)
+
+    def _call_claude(self, prompt: str, max_tokens: int = 2048) -> str:
+        """Single helper — all Claude calls go through here."""
+        message = self.client.messages.create(
+            model=self.cfg.claude_model,
+            max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return message.content[0].text.strip()
 
     def generate(self, trend: dict, video_type: str) -> dict:
         if video_type == "short":
@@ -57,7 +67,7 @@ Write a 60-second TEASER narration that builds to a dramatic cut.
 Keep sentences powerful and punchy. This is a TEASER, not the full story.
 End with a line that makes viewers NEED to watch Saturday's full episode.
 
-Return ONLY valid JSON (no markdown):
+Return ONLY valid JSON, no markdown fences:
 {{
   "title_raw": "Teaser title",
   "topic": "{trend['topic']}",
@@ -144,8 +154,8 @@ Return ONLY valid JSON (no markdown):
   }}
 }}"""
 
-        resp  = self.model.generate_content(prompt)
-        text  = resp.text.strip().replace("```json","").replace("```","").strip()
+        text   = self._call_claude(prompt, max_tokens=2048)
+        text   = text.replace("```json", "").replace("```", "").strip()
         script = json.loads(text)
         script["video_type"] = "short"
         self._advance_story(script, "short")
@@ -169,7 +179,7 @@ Write a complete 15-minute (900 seconds) narrated episode.
 8 chapters. Each chapter is a full scene with complete narration.
 This should feel like watching a prestige TV episode in audio form.
 
-Return ONLY valid JSON (no markdown):
+Return ONLY valid JSON, no markdown fences:
 {{
   "title_raw": "full episode title",
   "topic": "{trend['topic']}",
@@ -292,8 +302,8 @@ Return ONLY valid JSON (no markdown):
 
 Write ALL 8 chapters with complete narration text. Make it epic."""
 
-        resp   = self.model.generate_content(prompt, generation_config={"max_output_tokens": 8192})
-        text   = resp.text.strip().replace("```json","").replace("```","").strip()
+        text   = self._call_claude(prompt, max_tokens=8000)
+        text   = text.replace("```json", "").replace("```", "").strip()
         script = json.loads(text)
         script["video_type"] = "long"
         self._advance_story(script, "long")

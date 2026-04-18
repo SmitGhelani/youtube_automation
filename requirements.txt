@@ -1,5 +1,4 @@
 # ── LLM: Gemini (replaces Claude — free tier) ──────────────────────────────
-google-generativeai>=0.8.0
 
 # ── Video: fal.ai Seedance (paid per-use, free credits on signup) ───────────
 # No extra SDK needed — uses requests directly (REST API)
@@ -28,3 +27,5 @@ sendgrid>=6.10.0
 
 # ── Utilities ─────────────────────────────────────────────────────────────────
 python-dotenv>=1.0.0
+anthropic>=0.25.0
+# google-genai>=1.0.0  # optional: new Gemini SDK (replaces google-generativeai)

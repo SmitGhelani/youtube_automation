@@ -13,7 +13,7 @@ class Config:
     # ── API Keys ──────────────────────────────────────────────────────────────
     # Gemini (replaces Claude — free tier, 1500 RPD on Flash)
     gemini_api_key: str = field(
-        default_factory=lambda: os.environ["GEMINI_API_KEY"]
+        default_factory=lambda: os.environ.get("GEMINI_API_KEY", "")
     )
     # Anthropic key kept as optional fallback
     anthropic_api_key: str = field(
@@ -85,6 +85,13 @@ class Config:
     # ── LLM Model (Gemini — free tier) ───────────────────────────────────────
     # gemini-2.5-flash: free tier, 15 RPM, 1500 RPD, best free model
     gemini_model: str = "gemini-2.5-flash"
+
+    # ── Claude Model (primary LLM — replaces Gemini) ─────────────────────────
+    # Uses ANTHROPIC_API_KEY. claude-sonnet-4-5 is fast and cheap.
+    # For best quality use claude-opus-4-5 (slower, costs more).
+    claude_model: str = field(
+        default_factory=lambda: os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-5")
+    )
 
     # ── Video Model (Seedance via fal.ai) ─────────────────────────────────────
     # Seedance 1.5 Pro now. When Seedance 2.0 API goes GA, change to:

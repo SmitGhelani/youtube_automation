@@ -1,16 +1,17 @@
 """
 agents/trend_agent.py
 
-Plans the next Mahabharat episode beat using Gemini 2.5 Flash (free).
-No trending topics. Pure story progression.
+Plans the next Mahabharat episode beat using Claude (Anthropic).
+Replaced google.generativeai (deprecated, 20 RPD free limit) with
+anthropic SDK which uses ANTHROPIC_API_KEY already in the environment.
 
-Short:  60-second teaser of the upcoming Saturday episode — hooks viewers
+Short:  60-second teaser of the upcoming Saturday episode
 Long:   15-minute full Mahabharat episode every Saturday
 """
 
 import json
 import logging
-import google.generativeai as genai
+import anthropic
 
 logger = logging.getLogger("TrendAgent")
 
@@ -27,8 +28,7 @@ AUDIENCE: Devotees, mythology fans, general Indian audience, global viewers.
 class TrendAgent:
     def __init__(self, config):
         self.cfg = config
-        genai.configure(api_key=config.gemini_api_key)
-        self.model = genai.GenerativeModel(config.gemini_model)
+        self.client = anthropic.Anthropic(api_key=config.anthropic_api_key)
 
     def find_trending_topic(self, video_type: str) -> dict:
         from story_state import StoryManager
@@ -37,6 +37,15 @@ class TrendAgent:
             return self._plan_short_teaser(sm.get_context_for_short())
         else:
             return self._plan_long_episode(sm.get_context_for_long())
+
+    def _call_claude(self, prompt: str, max_tokens: int = 1024) -> str:
+        """Single helper — all Claude calls go through here."""
+        message = self.client.messages.create(
+            model=self.cfg.claude_model,
+            max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return message.content[0].text.strip()
 
     def _plan_short_teaser(self, ctx: dict) -> dict:
         ep        = ctx["short_episode"]
@@ -70,7 +79,7 @@ Plan a SHORT TEASER that:
 4. Ends on a hard cut with "SATURDAY — THE FULL STORY" type hook
 5. Makes viewers comment and share — maximum curiosity, minimum spoilers
 
-Return ONLY valid JSON:
+Return ONLY valid JSON, no markdown fences:
 {{
   "topic": "Short teaser title e.g. 'Arjuna Raises His Bow...'",
   "angle": "the dramatic moment being teased",
@@ -84,8 +93,8 @@ Return ONLY valid JSON:
   "context": "{parva}, teaser for episode {ctx['parva_scene']}"
 }}"""
 
-        resp = self.model.generate_content(prompt)
-        text = resp.text.strip().replace("```json","").replace("```","").strip()
+        text   = self._call_claude(prompt, max_tokens=1024)
+        text   = text.replace("```json", "").replace("```", "").strip()
         result = json.loads(text)
         logger.info(f"[TrendAgent] Short teaser EP{ep} planned: {result['topic']}")
         return result
@@ -120,7 +129,7 @@ Plan a FULL 15-MINUTE EPISODE that:
 4. Features iconic Mahabharat moments with full dramatic weight
 5. Feels like a prestige TV episode — GoT / Bahubali quality storytelling
 
-Return ONLY valid JSON:
+Return ONLY valid JSON, no markdown fences:
 {{
   "topic": "Full episode title e.g. 'The Dice Game — Draupadi's Vow'",
   "angle": "the full episode story arc in one sentence",
@@ -134,8 +143,8 @@ Return ONLY valid JSON:
   "context": "{parva}, full episode #{long_ep}"
 }}"""
 
-        resp = self.model.generate_content(prompt)
-        text = resp.text.strip().replace("```json","").replace("```","").strip()
+        text   = self._call_claude(prompt, max_tokens=1024)
+        text   = text.replace("```json", "").replace("```", "").strip()
         result = json.loads(text)
         logger.info(f"[TrendAgent] Long EP{long_ep} planned: {result['topic']}")
         return result
