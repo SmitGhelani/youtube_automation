@@ -6,8 +6,8 @@ import json
 import logging
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from llm_client import LLMClient
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 logger = logging.getLogger("TrendAgent")
 
